@@ -179,29 +179,120 @@ public class MainActivity extends Activity {
 
     private void showStockDialog(){
         machine=machineSpinner.getSelectedItemPosition()==0?MachineConfig.m53():MachineConfig.m5e32();
-        final LinkedHashMap<Integer,Integer> stock=loadStock(machine); ScrollView scroll=new ScrollView(this); scroll.setBackgroundColor(Color.WHITE);
-        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(18),dp(8),dp(18),dp(12)); box.setBackgroundColor(Color.WHITE); scroll.addView(box);
+        final LinkedHashMap<Integer,Integer> stock=loadStock(machine);
+        final LinkedHashMap<Integer,Integer> custom=loadCustomStock(machine);
+        ScrollView scroll=new ScrollView(this); scroll.setBackgroundColor(Color.WHITE);
+        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18),dp(8),dp(18),dp(12)); box.setBackgroundColor(Color.WHITE); scroll.addView(box);
+
+        TextView stdTitle=text("Паспортный комплект",16,DIALOG_TEXT,true);
+        LinearLayout.LayoutParams titleLp=lp(-1,-2); titleLp.setMargins(0,dp(4),0,dp(6)); box.addView(stdTitle,titleLp);
+
         for(Map.Entry<Integer,Integer> e:machine.maxCounts().entrySet()){
-            int teeth=e.getKey(), maximum=e.getValue(); LinearLayout r=row();r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(0,dp(2),0,dp(2));
+            int teeth=e.getKey(), maximum=e.getValue();
+            LinearLayout r=row(); r.setGravity(Gravity.CENTER_VERTICAL); r.setPadding(0,dp(2),0,dp(2));
             TextView lab=text(teeth+" зубьев",17,DIALOG_TEXT,true); r.addView(lab,new LinearLayout.LayoutParams(0,dp(48),1f));
-            Button count=new Button(this);count.setAllCaps(false);count.setTextSize(16);count.setTypeface(Typeface.DEFAULT_BOLD);count.setTextColor(Color.WHITE);
+            Button count=new Button(this); count.setAllCaps(false); count.setTextSize(16); count.setTypeface(Typeface.DEFAULT_BOLD); count.setTextColor(Color.WHITE);
             count.setBackground(roundRect(Color.rgb(45,52,60),Color.rgb(80,88,96),12));
-            Runnable refresh=()->count.setText(stock.get(teeth)+" / "+maximum);refresh.run();
+            Runnable refresh=()->count.setText(stock.get(teeth)+" / "+maximum); refresh.run();
             count.setOnClickListener(v->{int now=stock.get(teeth)-1;if(now<0)now=maximum;stock.put(teeth,now);refresh.run();});
-            r.addView(count,new LinearLayout.LayoutParams(dp(110),dp(44)));box.addView(r);
-            View div=new View(this);div.setBackgroundColor(Color.rgb(232,235,238));box.addView(div,new LinearLayout.LayoutParams(-1,dp(1)));
+            r.addView(count,new LinearLayout.LayoutParams(dp(110),dp(44))); box.addView(r);
+            View div=new View(this); div.setBackgroundColor(Color.rgb(232,235,238)); box.addView(div,new LinearLayout.LayoutParams(-1,dp(1)));
         }
+
+        TextView customTitle=text("Дополнительные шестерни",16,DIALOG_TEXT,true);
+        LinearLayout.LayoutParams ctLp=lp(-1,-2); ctLp.setMargins(0,dp(16),0,dp(6)); box.addView(customTitle,ctLp);
+
+        if(custom.isEmpty()){
+            TextView none=text("Пока нет. Можно добавить любую реально имеющуюся шестерню, например 91 зуб.",14,Color.rgb(95,100,105),false);
+            LinearLayout.LayoutParams noneLp=lp(-1,-2); noneLp.setMargins(0,0,0,dp(8)); box.addView(none,noneLp);
+        } else {
+            for(Map.Entry<Integer,Integer> e:custom.entrySet()){
+                int teeth=e.getKey();
+                LinearLayout r=row(); r.setGravity(Gravity.CENTER_VERTICAL); r.setPadding(0,dp(2),0,dp(2));
+                TextView lab=text(teeth+" зубьев  •  доп.",17,DIALOG_TEXT,true); r.addView(lab,new LinearLayout.LayoutParams(0,dp(48),1f));
+                Button qty=new Button(this); qty.setAllCaps(false); qty.setTextSize(15); qty.setTypeface(Typeface.DEFAULT_BOLD); qty.setTextColor(Color.WHITE);
+                qty.setText(e.getValue()+" шт."); qty.setBackground(roundRect(Color.rgb(45,52,60),Color.rgb(80,88,96),12));
+                qty.setOnClickListener(v->showCustomCountDialog(machine,teeth));
+                r.addView(qty,new LinearLayout.LayoutParams(dp(92),dp(44)));
+                Button del=new Button(this); del.setAllCaps(false); del.setText("×"); del.setTextSize(20); del.setTextColor(Color.rgb(150,30,30));
+                del.setBackgroundColor(Color.TRANSPARENT); del.setOnClickListener(v->{removeCustomGear(machine,teeth);showStockDialog();});
+                LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(dp(46),dp(44)); dl.setMargins(dp(4),0,0,0); r.addView(del,dl);
+                box.addView(r);
+                View div=new View(this); div.setBackgroundColor(Color.rgb(232,235,238)); box.addView(div,new LinearLayout.LayoutParams(-1,dp(1)));
+            }
+        }
+
+        Button add=new Button(this); add.setAllCaps(false); add.setText("+ Добавить шестерню"); add.setTextSize(16); add.setTypeface(Typeface.DEFAULT_BOLD);
+        add.setTextColor(Color.WHITE); add.setBackground(roundRect(Color.rgb(21,140,165),Color.rgb(21,177,204),12));
+        LinearLayout.LayoutParams addLp=lp(-1,dp(48)); addLp.setMargins(0,dp(10),0,dp(4)); box.addView(add,addLp);
+        add.setOnClickListener(v->showAddCustomGearDialog(machine));
+
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle(machine.name+" — шестерни в наличии")
-                .setMessage("Нажимайте на количество: максимум → … → 1 → 0 → максимум. Калькулятор учитывает реальное число одинаковых колёс.")
+                .setMessage("Паспортные колёса можно отключать. Дополнительные колёса участвуют в подборе наравне со штатными.")
                 .setView(scroll).setPositiveButton("Сохранить",(d,w)->{saveStock(machine,stock);calculate();})
-                .setNeutralButton("Паспортный комплект",(d,w)->{resetStock(machine);calculate();}).setNegativeButton("Отмена",null).create();
-        dialog.setOnShowListener(x->{TextView msg=dialog.findViewById(android.R.id.message);if(msg!=null){msg.setTextColor(DIALOG_TEXT);msg.setTextSize(16);}});dialog.show();
+                .setNeutralButton("Паспортный комплект",(d,w)->{resetStock(machine);calculate();})
+                .setNegativeButton("Закрыть",null).create();
+        dialog.setOnShowListener(x->{TextView msg=dialog.findViewById(android.R.id.message);if(msg!=null){msg.setTextColor(DIALOG_TEXT);msg.setTextSize(16);}});
+        dialog.show();
+    }
+
+    private void showAddCustomGearDialog(MachineConfig m){
+        LinearLayout wrap=new LinearLayout(this); wrap.setOrientation(LinearLayout.VERTICAL); wrap.setPadding(dp(20),dp(6),dp(20),0);
+        EditText teeth=new EditText(this); teeth.setHint("Например, 91"); teeth.setInputType(InputType.TYPE_CLASS_NUMBER); teeth.setTextColor(DIALOG_TEXT); teeth.setHintTextColor(Color.GRAY);
+        EditText qty=new EditText(this); qty.setHint("Количество, по умолчанию 1"); qty.setInputType(InputType.TYPE_CLASS_NUMBER); qty.setTextColor(DIALOG_TEXT); qty.setHintTextColor(Color.GRAY);
+        wrap.addView(teeth,lp(-1,dp(54))); wrap.addView(qty,lp(-1,dp(54)));
+        new AlertDialog.Builder(this).setTitle("Добавить шестерню").setView(wrap)
+                .setPositiveButton("Добавить",(d,w)->{
+                    int t=(int)parse(teeth.getText().toString()); int q=(int)parse(qty.getText().toString());
+                    if(q<=0)q=1;
+                    if(t>=10&&t<=300){addCustomGear(m,t,q);calculate();}
+                }).setNegativeButton("Отмена",null).show();
+    }
+
+    private void showCustomCountDialog(MachineConfig m,int teeth){
+        EditText qty=new EditText(this); qty.setInputType(InputType.TYPE_CLASS_NUMBER); qty.setSelectAllOnFocus(true);
+        qty.setText(String.valueOf(loadCustomStock(m).get(teeth))); qty.setTextColor(DIALOG_TEXT);
+        LinearLayout wrap=new LinearLayout(this); wrap.setPadding(dp(22),0,dp(22),0); wrap.addView(qty,lp(-1,dp(56)));
+        new AlertDialog.Builder(this).setTitle(teeth+" зубьев — количество").setView(wrap)
+                .setPositiveButton("Сохранить",(d,w)->{int q=(int)parse(qty.getText().toString());if(q>0)addCustomGear(m,teeth,q);else removeCustomGear(m,teeth);calculate();})
+                .setNegativeButton("Отмена",null).show();
     }
 
     private LinkedHashMap<Integer,Integer> loadStock(MachineConfig m){LinkedHashMap<Integer,Integer> out=new LinkedHashMap<>();for(Map.Entry<Integer,Integer> e:m.maxCounts().entrySet())out.put(e.getKey(),prefs.getInt("stock_"+m.key+"_"+e.getKey(),e.getValue()));return out;}
     private void saveStock(MachineConfig m,Map<Integer,Integer> stock){SharedPreferences.Editor ed=prefs.edit();for(Map.Entry<Integer,Integer> e:stock.entrySet())ed.putInt("stock_"+m.key+"_"+e.getKey(),e.getValue());ed.apply();}
     private void resetStock(MachineConfig m){SharedPreferences.Editor ed=prefs.edit();for(Integer t:m.maxCounts().keySet())ed.remove("stock_"+m.key+"_"+t);ed.apply();}
-    private List<Integer> available(MachineConfig m){List<Integer> out=new ArrayList<>();for(Map.Entry<Integer,Integer> e:loadStock(m).entrySet())for(int i=0;i<e.getValue();i++)out.add(e.getKey());return out;}
+
+    private LinkedHashMap<Integer,Integer> loadCustomStock(MachineConfig m){
+        LinkedHashMap<Integer,Integer> out=new LinkedHashMap<>();
+        String csv=prefs.getString("custom_list_"+m.key,"");
+        if(csv==null||csv.trim().isEmpty())return out;
+        String[] parts=csv.split(",");
+        List<Integer> teeth=new ArrayList<>();
+        for(String s:parts){try{int t=Integer.parseInt(s.trim());if(t>0&&!teeth.contains(t))teeth.add(t);}catch(Exception ignored){}}
+        Collections.sort(teeth);
+        for(Integer t:teeth){int q=prefs.getInt("custom_count_"+m.key+"_"+t,1);if(q>0)out.put(t,q);}
+        return out;
+    }
+    private void addCustomGear(MachineConfig m,int teeth,int count){
+        LinkedHashMap<Integer,Integer> map=loadCustomStock(m); map.put(teeth,Math.max(1,count)); saveCustomStock(m,map);
+    }
+    private void removeCustomGear(MachineConfig m,int teeth){
+        LinkedHashMap<Integer,Integer> map=loadCustomStock(m); map.remove(teeth); saveCustomStock(m,map);
+    }
+    private void saveCustomStock(MachineConfig m,Map<Integer,Integer> map){
+        StringBuilder csv=new StringBuilder(); SharedPreferences.Editor ed=prefs.edit();
+        List<Integer> keys=new ArrayList<>(map.keySet()); Collections.sort(keys);
+        for(Integer t:keys){if(csv.length()>0)csv.append(",");csv.append(t);ed.putInt("custom_count_"+m.key+"_"+t,map.get(t));}
+        ed.putString("custom_list_"+m.key,csv.toString()).apply();
+    }
+
+    private List<Integer> available(MachineConfig m){
+        List<Integer> out=new ArrayList<>();
+        for(Map.Entry<Integer,Integer> e:loadStock(m).entrySet())for(int i=0;i<e.getValue();i++)out.add(e.getKey());
+        for(Map.Entry<Integer,Integer> e:loadCustomStock(m).entrySet())for(int i=0;i<e.getValue();i++)out.add(e.getKey());
+        return out;
+    }
     private void resetInputs(){zInput.setText("56");moduleInput.setText("2,5");startsInput.setText("1");betaDegInput.setText("12");betaMinInput.setText("0");betaSecInput.setText("0");toothTypeSpinner.setSelection(0);helixSpinner.setSelection(0);hobHandSpinner.setSelection(0);cutMethodSpinner.setSelection(0);calculate();}
     private double parseAngle(){double d=parse(betaDegInput.getText().toString()),m=parse(betaMinInput.getText().toString()),s=parse(betaSecInput.getText().toString());if(Double.isNaN(d)||Double.isNaN(m)||Double.isNaN(s)||m<0||m>=60||s<0||s>=60)return Double.NaN;return d+m/60.0+s/3600.0;}
     private String angleText(double beta){int d=(int)Math.floor(beta);double rem=(beta-d)*60;int m=(int)Math.floor(rem),s=(int)Math.round((rem-m)*60);if(s==60){s=0;m++;}if(m==60){m=0;d++;}return d+"° "+m+"′ "+s+"″";}
