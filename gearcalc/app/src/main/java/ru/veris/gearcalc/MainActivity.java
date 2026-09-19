@@ -172,10 +172,8 @@ public class MainActivity extends Activity {
     }
 
     private String buildAlternatives(List<Candidate> idx,List<Candidate> diff,boolean h){
-        StringBuilder s=new StringBuilder("Ближайшие варианты
-Деление: "); appendCandidates(s,idx);
-        if(h){s.append("
-Дифференциал: ");appendCandidates(s,diff);} return s.toString();
+        StringBuilder s=new StringBuilder("Ближайшие варианты\\nДеление: "); appendCandidates(s,idx);
+        if(h){s.append("\\nДифференциал: ");appendCandidates(s,diff);} return s.toString();
     }
     private void appendCandidates(StringBuilder s,List<Candidate> list){int n=Math.min(3,list.size());for(int i=0;i<n;i++){if(i>0)s.append("  •  ");Candidate c=list.get(i);s.append(c.expression()).append(" (Δ ").append(fmt(c.relError*100,5)).append("%)");}if(n==0)s.append("нет");}
 
