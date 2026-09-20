@@ -180,7 +180,7 @@ class MainActivity : Activity() {
             if(button.isEnabled.not() && glow.alpha>0f){
                 resetEmergencyVisual()
             }
-        },10000)
+        },30000)
     }
 
     private fun showLocationChoice(){
@@ -195,10 +195,12 @@ class MainActivity : Activity() {
         d.setOnShowListener{
             d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener{
                 d.dismiss()
+                finishEmergencyVisualAfterSend()
                 requestLocation()
             }
             d.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener{
                 d.dismiss()
+                finishEmergencyVisualAfterSend()
                 send(null)
             }
             d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener{
@@ -208,6 +210,12 @@ class MainActivity : Activity() {
         }
         d.setOnCancelListener { cancelEmergencyCall() }
         d.show()
+    }
+
+    private fun finishEmergencyVisualAfterSend(){
+        Handler(Looper.getMainLooper()).postDelayed({
+            resetEmergencyVisual()
+        },5000)
     }
 
     private fun cancelEmergencyCall(){
