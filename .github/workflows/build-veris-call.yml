@@ -22,7 +22,13 @@ jobs:
         working-directory: veris-call
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
-          base64 -d screen_bg.b64 > app/src/main/res/drawable-nodpi/screen_bg.jpg
+          python3 - <<'PY'
+import base64
+from pathlib import Path
+s=Path("screen_bg.b64").read_text().strip()
+s += "=" * ((4-len(s)%4)%4)
+Path("app/src/main/res/drawable-nodpi/screen_bg.jpg").write_bytes(base64.b64decode(s, validate=True))
+PY
           file app/src/main/res/drawable-nodpi/screen_bg.jpg
       - name: Build debug APK
         working-directory: veris-call
