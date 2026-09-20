@@ -175,12 +175,6 @@ class MainActivity : Activity() {
         Handler(Looper.getMainLooper()).postDelayed({
             showLocationChoice()
         },2000)
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            if(button.isEnabled.not() && glow.alpha>0f){
-                resetEmergencyVisual()
-            }
-        },30000)
     }
 
     private fun showLocationChoice(){
@@ -294,21 +288,21 @@ class MainActivity : Activity() {
     }
 
     private fun send(loc:Location?){
-        val wait=AlertDialog.Builder(this).setTitle("Отправляем вызов").setMessage("Связываемся с Верис…").setCancelable(false).create(); wait.show()
         Thread{
             val result=post(loc)
             runOnUiThread{
-                wait.dismiss()
-                if(result.first) {
-                    AlertDialog.Builder(this).setTitle("Вызов отправлен")
-                        .setMessage("Верис получил вашу заявку. Ожидайте звонка.")
-                        .setPositiveButton("Хорошо",null).show()
-                } else {
+                if(!result.first){
                     resetEmergencyVisual()
-                    AlertDialog.Builder(this).setTitle("Не удалось отправить")
-                        .setMessage("Проверьте интернет и повторите попытку.\n\n${result.second}")
-                        .setPositiveButton("Повторить"){_,_-> animateEmergencyPress(emergencyButton?:return@setPositiveButton, emergencyGlow?:return@setPositiveButton)}
-                        .setNegativeButton("Закрыть",null).show()
+                    AlertDialog.Builder(this)
+                        .setTitle("Не удалось отправить вызов")
+                        .setMessage("Проверьте интернет и попробуйте ещё раз.")
+                        .setPositiveButton("Повторить"){_,_->
+                            val b=emergencyButton
+                            val g=emergencyGlow
+                            if(b!=null && g!=null) animateEmergencyPress(b,g)
+                        }
+                        .setNegativeButton("Закрыть",null)
+                        .show()
                 }
             }
         }.start()
