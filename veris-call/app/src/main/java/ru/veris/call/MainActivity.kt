@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -50,13 +51,53 @@ class MainActivity : Activity() {
         root.addView(TextView(this).apply {
             text="Помощь спецтехнике"; textSize=16f; gravity=Gravity.CENTER; setTextColor(Color.DKGRAY)
         }, LinearLayout.LayoutParams(-1,-2).apply{topMargin=px(4)})
-        val b=Button(this).apply {
-            text="ВЫЗВАТЬ\nВЕРИС"; textSize=28f; gravity=Gravity.CENTER; isAllCaps=false
-            setTextColor(Color.WHITE); setTypeface(Typeface.DEFAULT,Typeface.BOLD)
-            background=GradientDrawable().apply{shape=GradientDrawable.OVAL; setColor(Color.rgb(196,0,0))}
-            setOnClickListener { chooseLocation() }
+        val emergency=FrameLayout(this).apply {
+            clipChildren=false
+            clipToPadding=false
         }
-        root.addView(b, LinearLayout.LayoutParams(px(260),px(260)).apply{topMargin=px(44)})
+
+        val glow=View(this).apply {
+            alpha=0f
+            background=GradientDrawable().apply {
+                shape=GradientDrawable.OVAL
+                gradientType=GradientDrawable.RADIAL_GRADIENT
+                colors=intArrayOf(Color.argb(210,255,40,25),Color.argb(105,255,20,12),Color.TRANSPARENT)
+                gradientRadius=px(150).toFloat()
+            }
+        }
+        emergency.addView(glow,FrameLayout.LayoutParams(px(300),px(300),Gravity.CENTER))
+
+        val base=View(this).apply {
+            background=GradientDrawable().apply {
+                shape=GradientDrawable.OVAL
+                colors=intArrayOf(Color.rgb(55,55,55),Color.rgb(12,12,12))
+                setStroke(px(7),Color.rgb(235,180,0))
+            }
+        }
+        emergency.addView(base,FrameLayout.LayoutParams(px(274),px(274),Gravity.CENTER))
+
+        val ring=View(this).apply {
+            background=GradientDrawable().apply {
+                shape=GradientDrawable.OVAL
+                colors=intArrayOf(Color.rgb(210,210,210),Color.rgb(70,70,70),Color.rgb(25,25,25))
+                setStroke(px(3),Color.rgb(235,235,235))
+            }
+        }
+        emergency.addView(ring,FrameLayout.LayoutParams(px(244),px(244),Gravity.CENTER))
+
+        val b=Button(this).apply {
+            text="ВЫЗВАТЬ\nВЕРИС"; textSize=27f; gravity=Gravity.CENTER; isAllCaps=false
+            setTextColor(Color.WHITE); setTypeface(Typeface.DEFAULT,Typeface.BOLD)
+            elevation=px(16).toFloat()
+            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(255,75,58),Color.rgb(210,10,6),Color.rgb(125,0,0))).apply {
+                shape=GradientDrawable.OVAL
+                setStroke(px(3),Color.rgb(110,0,0))
+            }
+            setOnClickListener { animateEmergencyPress(this,glow) }
+        }
+        emergency.addView(b,FrameLayout.LayoutParams(px(218),px(218),Gravity.CENTER))
+        root.addView(emergency, LinearLayout.LayoutParams(px(310),px(310)).apply{topMargin=px(28)})
         root.addView(TextView(this).apply {
             text="При поломке нажмите кнопку.\nКарточка и, с вашего разрешения, координаты будут отправлены в Верис."
             textSize=15f; gravity=Gravity.CENTER; setTextColor(Color.GRAY)
@@ -97,6 +138,49 @@ class MainActivity : Activity() {
             }
         }
         d.setCancelable(!first); d.show()
+    }
+
+    private fun animateEmergencyPress(button:Button, glow:View){
+        if(!button.isEnabled)return
+        if(!complete()){editProfile(true);return}
+
+        button.isEnabled=false
+        button.animate().cancel()
+        glow.animate().cancel()
+
+        glow.alpha=0f
+        glow.scaleX=.78f
+        glow.scaleY=.78f
+
+        button.animate()
+            .translationY(px(16).toFloat())
+            .scaleX(.96f).scaleY(.96f)
+            .setDuration(150)
+            .start()
+
+        glow.animate()
+            .alpha(1f)
+            .scaleX(1.08f).scaleY(1.08f)
+            .setDuration(220)
+            .start()
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            glow.animate().alpha(.62f).setDuration(180).withEndAction {
+                glow.animate().alpha(1f).setDuration(180).start()
+            }.start()
+        },900)
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            glow.animate().alpha(0f).scaleX(1.18f).scaleY(1.18f).setDuration(260).start()
+            button.animate()
+                .translationY(0f)
+                .scaleX(1f).scaleY(1f)
+                .setDuration(220)
+                .withEndAction {
+                    button.isEnabled=true
+                    chooseLocation()
+                }.start()
+        },5000)
     }
 
     private fun chooseLocation(){
