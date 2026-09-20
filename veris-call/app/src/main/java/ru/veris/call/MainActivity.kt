@@ -140,9 +140,17 @@ class MainActivity : Activity() {
         d.setCancelable(!first); d.show()
     }
 
+    private var emergencyButton:Button?=null
+    private var emergencyGlow:View?=null
+    private var pressStartedAt:Long=0L
+
     private fun animateEmergencyPress(button:Button, glow:View){
         if(!button.isEnabled)return
         if(!complete()){editProfile(true);return}
+
+        emergencyButton=button
+        emergencyGlow=glow
+        pressStartedAt=System.currentTimeMillis()
 
         button.isEnabled=false
         button.animate().cancel()
@@ -165,31 +173,67 @@ class MainActivity : Activity() {
             .start()
 
         Handler(Looper.getMainLooper()).postDelayed({
-            glow.animate().alpha(.62f).setDuration(180).withEndAction {
-                glow.animate().alpha(1f).setDuration(180).start()
-            }.start()
-        },900)
+            showLocationChoice()
+        },2000)
 
         Handler(Looper.getMainLooper()).postDelayed({
-            glow.animate().alpha(0f).scaleX(1.18f).scaleY(1.18f).setDuration(260).start()
-            button.animate()
-                .translationY(0f)
-                .scaleX(1f).scaleY(1f)
-                .setDuration(220)
-                .withEndAction {
-                    button.isEnabled=true
-                    chooseLocation()
-                }.start()
-        },5000)
+            if(button.isEnabled.not() && glow.alpha>0f){
+                resetEmergencyVisual()
+            }
+        },10000)
     }
 
-    private fun chooseLocation(){
-        if(!complete()){editProfile(true);return}
-        AlertDialog.Builder(this).setTitle("Вызвать Верис")
-            .setMessage("Передать местоположение техники?")
-            .setPositiveButton("Да, передать"){_,_-> requestLocation()}
-            .setNegativeButton("Нет"){_,_-> send(null)}
-            .setNeutralButton("Отмена",null).show()
+    private fun showLocationChoice(){
+        val d=AlertDialog.Builder(this)
+            .setTitle("Вызвать Верис")
+            .setMessage("Передать данные геолокации (вашего местоположения)?")
+            .setPositiveButton("Да",null)
+            .setNegativeButton("Нет",null)
+            .setNeutralButton("Отменить вызов",null)
+            .create()
+
+        d.setOnShowListener{
+            d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener{
+                d.dismiss()
+                requestLocation()
+            }
+            d.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener{
+                d.dismiss()
+                send(null)
+            }
+            d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener{
+                d.dismiss()
+                cancelEmergencyCall()
+            }
+        }
+        d.setOnCancelListener { cancelEmergencyCall() }
+        d.show()
+    }
+
+    private fun cancelEmergencyCall(){
+        resetEmergencyVisual()
+        Toast.makeText(this,"Вызов отменён",Toast.LENGTH_SHORT).show()
+    }
+
+    private fun resetEmergencyVisual(){
+        val button=emergencyButton ?: return
+        val glow=emergencyGlow
+
+        glow?.animate()?.cancel()
+        button.animate().cancel()
+
+        glow?.animate()
+            ?.alpha(0f)
+            ?.scaleX(1.18f)?.scaleY(1.18f)
+            ?.setDuration(180)
+            ?.start()
+
+        button.animate()
+            .translationY(0f)
+            .scaleX(1f).scaleY(1f)
+            .setDuration(180)
+            .withEndAction { button.isEnabled=true }
+            .start()
     }
 
     private fun requestLocation(){
@@ -247,11 +291,17 @@ class MainActivity : Activity() {
             val result=post(loc)
             runOnUiThread{
                 wait.dismiss()
-                if(result.first) AlertDialog.Builder(this).setTitle("Вызов отправлен")
-                    .setMessage("Верис получил вашу заявку. Ожидайте звонка.").setPositiveButton("Хорошо",null).show()
-                else AlertDialog.Builder(this).setTitle("Не удалось отправить")
-                    .setMessage("Проверьте интернет и повторите попытку.\n\n${result.second}")
-                    .setPositiveButton("Повторить"){_,_->send(loc)}.setNegativeButton("Закрыть",null).show()
+                if(result.first) {
+                    AlertDialog.Builder(this).setTitle("Вызов отправлен")
+                        .setMessage("Верис получил вашу заявку. Ожидайте звонка.")
+                        .setPositiveButton("Хорошо",null).show()
+                } else {
+                    resetEmergencyVisual()
+                    AlertDialog.Builder(this).setTitle("Не удалось отправить")
+                        .setMessage("Проверьте интернет и повторите попытку.\n\n${result.second}")
+                        .setPositiveButton("Повторить"){_,_-> animateEmergencyPress(emergencyButton?:return@setPositiveButton, emergencyGlow?:return@setPositiveButton)}
+                        .setNegativeButton("Закрыть",null).show()
+                }
             }
         }.start()
     }
